@@ -46,6 +46,11 @@ then
 # device must be set before mqtt output lines.
 # https://github.com/merbanan/rtl_433/blob/master/conf/rtl_433.example.conf
 
+# Uncomment and modify the following line to enable bias tee for RTL-SDR Blog V4
+# Note: This will enable bias tee for the specified device before rtl_433 starts
+# bias_tee_device 0
+
+
 output mqtt://\${host}:\${port},user=\${username},pass=\${password},retain=\${retain}
 report_meta time:iso:usec:tz
 
@@ -102,6 +107,12 @@ rm -f $conf_directory/*.conf
 rtl_433_pids=()
 for template in $conf_directory/*.conf.template
 do
+do
+    # Enable bias tee if configured (applies to all devices)
+    if bashio::var.true "${bias_tee}"; then
+        bashio::log.info "Enabling bias tee for RTL-SDR Blog V4..."
+        rtl_biast -b 1 || bashio::log.warning "Failed to enable bias tee"
+    fi
     # Remove '.template' from the file name.
     live=$(basename $template .template)
 
