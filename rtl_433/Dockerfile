@@ -1,13 +1,16 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
 FROM $BUILD_FROM as builder
-MAINTAINER pbkhrv@pm.me
+
+ARG RTLSDRBLOG_REPO="https://github.com/rtlsdrblog/rtl-sdr-blog.git"
 
 ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
 
 # Copied with minor edits from https://github.com/hertzg/rtl_433_docker/blob/master/images/alpine/build-context/Dockerfile
 RUN apk add --no-cache --virtual .buildDeps \
     build-base \
-    libusb-dev \
+	libusb-1.0-0-dev \
     hackrf \
     hackrf-dev \
     librtlsdr-dev \
@@ -16,6 +19,22 @@ RUN apk add --no-cache --virtual .buildDeps \
     openssl-dev \
     cmake \
     git
+
+WORKDIR /tmp/build_drivers
+
+# Clone, build, and install rtl-sdr-blog drivers
+RUN git clone --depth 1 ${RTLSDRBLOG_REPO} . && \
+    mkdir build && \
+    cd build && \
+    # Using -DDETACH_KERNEL_DRIVER=ON to help if kernel drivers are loaded
+    # Using -DINSTALL_UDEV_RULES=ON to install udev rules for device access
+    cmake ../ -DINSTALL_UDEV_RULES=ON -DDETACH_KERNEL_DRIVER=ON && \
+    make -j"$(nproc)" && \
+    make install && \
+    ldconfig && \
+    # Clean up driver build directory
+    cd / && \
+    rm -rf /tmp/build_drivers
 
 WORKDIR /build
 
